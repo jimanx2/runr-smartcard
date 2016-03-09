@@ -1,0 +1,19 @@
+{
+  "name": "runr-smartcard",
+  "version": "0.0.1",
+  "description": "SmartCard Reader Entrypoint For Runr",
+  "main": "main.js",
+  "dependencies": {
+    "pcsclite": "latest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jimanx2/runr-smartcard"
+  },
+  "keywords": [
+  ],
+  "author": "Haziman Hashim",
+  "contributors": [
+  ],
+  "license": "MIT"
+}
