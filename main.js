@@ -1,46 +1,68 @@
 function RunrSmartcard(){
-	var pcsclite = require('pcsclite');
-	var pcsc = pcsclite();
+	var pcsclite = require('pcsclite'), pcsc = null;
 	var readers = {};
-  pcsc.on('reader', function(reader){
-		readers[reader.name] = reader;
-		reader.on('end', function(){
-			delete readers[this.name];
+
+	var cleanup = function(){
+		Object.keys(readers).forEach(function(name){
+			readers[name].close();
 		});
-		reader.on('status', function(status){
+		pcsc.close();
+		pcsc = null;
+	};
+
+	var startPcsc = function(){
+		pcsc = pcsclite();
+		pcsc.on('reader', function(reader){
+			readers[reader.name] = reader;
+			reader.on('end', function(){
+				delete readers[this.name];
+			});
 			reader.on('status', function(status) {
-        /* check what has changed */
-				if( status.atr.length != 0 ){
-            reader.ATR = status.atr;
+	        /* check what has changed */
+					if( status.atr.length != 0 ){
+	            reader.ATR = status.atr;
 
-            var UID = (
-              reader.ATR[0].toString(16) +
-              reader.ATR[1].toString(16)
-            ).toUpperCase();
+	            var UID = (
+	              reader.ATR[0].toString(16) +
+	              reader.ATR[1].toString(16)
+	            ).toUpperCase();
 
-            reader.UID = UID;
-				}
-				
-        var changes = this.state ^ status.state;
-        if (changes) {
-            if (
-							(changes & this.SCARD_STATE_EMPTY) && 
-							(status.state & this.SCARD_STATE_EMPTY)
-						) {
-								reader.status = "card_removed";
-                disconnect(reader).catch(function(err){ 
-									console.log(err); 
-								});
-						} else if (
-							(changes & this.SCARD_STATE_PRESENT) && 
-							(status.state & this.SCARD_STATE_PRESENT)
-						) {
-								reader.status = "card_present";
-						}
-			  }
+	            reader.UID = UID;
+					}
+
+	        var changes = this.state ^ status.state;
+	        if (changes) {
+	            if (
+								(changes & this.SCARD_STATE_EMPTY) &&
+								(status.state & this.SCARD_STATE_EMPTY)
+							) {
+									reader.status = "card_removed";
+	                disconnect(reader).catch(function(err){
+										console.log(err);
+									});
+							} else if (
+								(changes & this.SCARD_STATE_PRESENT) &&
+								(status.state & this.SCARD_STATE_PRESENT)
+							) {
+									reader.status = "card_present";
+							}
+				  }
+				});
+			reader.on('error', function(err){
+				console.error(err);
+				delete readers[this.name];
+			});
 		});
+	};
+
+	startPcsc();
+
+	process.on('uncaughtException', function (err) {
+	  console.log(err);
+		cleanup();
+		startPcsc();
 	});
-	});
+
 	var connect = function(reader){
 		return new Promise(function(rs, rx){
 			reader.connect({ share_mode : this.SCARD_SHARE_SHARED }, function(err, protocol) {
@@ -49,7 +71,7 @@ function RunrSmartcard(){
 			});
 		});
 	};
-	
+
 	var disconnect = function(reader){
 		return new Promise(function(rs, rx){
 			reader.disconnect(reader.SCARD_LEAVE_CARD, function(err) {
@@ -58,7 +80,7 @@ function RunrSmartcard(){
 			});
 		});
 	};
-	
+
 	var transmit = function(reader, proto, payload){
 		return new Promise(function(rs, rx){
 			reader.transmit(payload, 40, proto, function(err, data) {
@@ -68,9 +90,9 @@ function RunrSmartcard(){
 			});
 		});
 	};
-	
+
 	return {
-		
+
 		getReaderList: function(res){
 			res.setHeader('Content-Type', 'application/json');
 			res.end(JSON.stringify(
@@ -81,7 +103,7 @@ function RunrSmartcard(){
 			var reader = readers[ Object.keys(readers)[query ? query.rId || 0 : 0] ];
 			res.end(JSON.stringify(reader));
 		}
-		
+
 	};
 };
 module.exports = RunrSmartcard.call(this);
