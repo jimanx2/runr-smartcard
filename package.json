@@ -4,7 +4,8 @@
   "description": "SmartCard Reader Entrypoint For Runr",
   "main": "main.js",
   "dependencies": {
-    "pcsclite": "latest"
+    "pcsclite": "latest",
+    "buffertools": "latest"
   },
   "repository": {
     "type": "git",
